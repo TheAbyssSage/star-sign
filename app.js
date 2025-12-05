@@ -1,88 +1,81 @@
-// Zodiac ranges (template dates – will be adjusted to the correct year)
-const ZODIAC_RANGES = [
-  { sign: "Aries",        start: [3, 21], end: [4, 19] },   // Mar 21 – Apr 19
-  { sign: "Taurus",       start: [4, 20], end: [5, 20] },
-  { sign: "Gemini",       start: [5, 21], end: [6, 20] },
-  { sign: "Cancer",       start: [6, 21], end: [7, 22] },
-  { sign: "Leo",          start: [7, 23], end: [8, 22] },
-  { sign: "Virgo",        start: [8, 23], end: [9, 22] },
-  { sign: "Libra",        start: [9, 23], end: [10, 22] },
-  { sign: "Scorpio",      start: [10, 23], end: [11, 21] },
-  { sign: "Sagittarius",  start: [11, 22], end: [12, 21] },
-  { sign: "Capricorn",    start: [12, 22], end: [1, 19] },   // crosses year
-  { sign: "Aquarius",     start: [1, 20], end: [2, 18] },
-  { sign: "Pisces",       start: [2, 19], end: [3, 20] },
-];
+function mmdd(date) {
+  const m = date.getMonth() + 1; // 1..12
+  const d = date.getDate();      // 1..31
+  return m * 100 + d;
+}
 
-function getZodiacSign(date) {
-  const month = date.getMonth() + 1;    // 1–12
-  const day   = date.getDate();
-  const year  = date.getFullYear();
+// Compute zodiac sign with exclusive ranges (Western tropical zodiac)
+function getZodiac(date) {
+  const v = mmdd(date);
 
-  for (const { sign, start, end } of ZODIAC_RANGES) {
-    const [sMonth, sDay] = start;
-    const [eMonth, eDay] = end;
+  if (v >= 321 && v <= 419) return "Aries";
+  if (v >= 420 && v <= 520) return "Taurus";
+  if (v >= 521 && v <= 620) return "Gemini";
+  if (v >= 621 && v <= 722) return "Cancer";
+  if (v >= 723 && v <= 822) return "Leo";
+  if (v >= 823 && v <= 922) return "Virgo";
+  if (v >= 923 && v <= 1022) return "Libra";
+  if (v >= 1023 && v <= 1121) return "Scorpio";
+  if (v >= 1122 && v <= 1221) return "Sagittarius";
+  if (v >= 1222 || v <= 119) return "Capricorn"; // wraps across year end
+  if (v >= 120 && v <= 218) return "Aquarius";
+  if (v >= 219 && v <= 320) return "Pisces";
 
-    const inStartRange = (month === sMonth && day >= sDay) || month > sMonth;
-    const inEndRange   = (month === eMonth && day <= eDay) || month < eMonth;
-
-    // Special handling for signs that cross the year (only Capricorn)
-    if (sMonth === 12 && eMonth === 1) {
-      if ((month === 12 && day >= sDay) || (month === 1 && day <= eDay)) {
-        return sign;
-      }
-    } else if (inStartRange && inEndRange) {
-      return sign;
-    }
-  }
   return "Unknown";
 }
 
-// UI – creates everything inside <div id="sign">
-(() => {
+// Optional: simple validation to ensure parsed Date matches input y-m-d
+function isValidYMD(y, m, d, date) {
+  return (
+    date instanceof Date &&
+    !isNaN(date) &&
+    date.getFullYear() === y &&
+    date.getMonth() === m - 1 &&
+    date.getDate() === d
+  );
+}
+
+// UI bootstrap inside #sign
+(function init() {
   const container = document.getElementById("sign");
   if (!container) return;
 
-  const label = Object.assign(document.createElement("label"), {
-    textContent: "Birth date: ",
-    htmlFor: "birthdate"
-  });
+  // Clear any previous content to avoid duplicate UI/listeners if re-run
+  container.textContent = "";
 
-  const input = Object.assign(document.createElement("input"), {
-    type: "date",
-    id: "birthdate"
-  });
+  container.innerHTML = `
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+      <label for="bd">Birth date:</label>
+      <input type="date" id="bd">
+      <button id="go">Show Sign</button>
+    </div>
+    <div id="result" style="font-size:1.5em; font-weight:bold;"></div>
+  `;
 
-  const button = Object.assign(document.createElement("button"), {
-    textContent: "Show Zodiac Sign"
-  });
 
-  const output = Object.assign(document.createElement("div"), {
-    style: "margin-top: 1rem; font-size: 1.4rem; font-weight: bold;"
-  });
+  const bd = document.getElementById("bd");
+  const btn = document.getElementById("go");
+  const resultEl = document.getElementById("result");
 
-  const row = Object.assign(document.createElement("div"), {
-    style: "display: flex; gap: 12px; align-items: center; flex-wrap: wrap;"
-  });
-  row.append(label, input, button);
-  container.append(row, output);
-
-  button.addEventListener("click", () => {
-    if (!input.value) {
-      output.textContent = "Please select a date";
+  btn.addEventListener("click", () => {
+    const val = bd.value;
+    if (!val) {
+      resultEl.textContent = "Pick a date!";
       return;
     }
 
-    const [y, m, d] = input.value.split("-");
-    const birthDate = new Date(y, m - 1, d); // safe, no timezone issues
-    const sign = getZodiacSign(birthDate);
+    const [yStr, mStr, dStr] = val.split("-");
+    const y = Number(yStr);
+    const m = Number(mStr);
+    const d = Number(dStr);
+    const date = new Date(y, m - 1, d);
 
-    const emojis = {
-      Aries: "Aries", Taurus: "Taurus", Gemini: "Gemini", Cancer: "Cancer",
-      Leo: "Leo", Virgo: "Virgo", Libra: "Libra", Scorpio: "Scorpio",
-      Sagittarius: "Sagittarius", Capricorn: "Capricorn", Aquarius: "Aquarius", Pisces: "Pisces"
-    };
+    if (!isValidYMD(y, m, d, date)) {
+      resultEl.textContent = "Invalid date.";
+      return;
+    }
 
-    output.innerHTML = `Your zodiac sign is <strong>${emojis[sign]} ${sign}</strong>`;
+    const sign = getZodiac(date);
+    resultEl.textContent = `Your sign: ${sign}`;
   });
 })();
