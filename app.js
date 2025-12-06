@@ -1,6 +1,6 @@
 function mmdd(date) {
-  const m = date.getMonth() + 1; // 1..12
-  const d = date.getDate();      // 1..31
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
   return m * 100 + d;
 }
 
